@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+#rotate-msg {
+  display:none;
+  position:fixed; inset:0; z-index:999;
+  background:#000;
+  flex-direction:column;
+  align-items:center; justify-content:center;
+  color:#ff6600; font-size:24px; font-family:monospace;
+  text-align:center; gap:20px;
+}
+@media (orientation: portrait) {
+  #rotate-msg { display:flex !important; }
+  #game-root { display:none !important; }
+}
+</style>
+<title>🔥 Desert Fire</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:#000; overflow:hidden; touch-action:none; user-select:none; }
+canvas { display:block; position:fixed; top:0; left:0; }
+
+#menu {
+  position:fixed; inset:0;
+  background:radial-gradient(ellipse,#1a0800,#000);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:20;
+}
+#menu h1 {
+  font-size:clamp(38px,12vw,72px); font-weight:900;
+  color:#ff6600; font-family:monospace;
+  text-shadow:0 0 40px #ff4400,0 0 80px #ff2200;
+  margin-bottom:8px; text-align:center;
+}
+#menu .sub { color:#ff9944; font-size:clamp(13px,3.5vw,16px); text-align:center; line-height:2.2; direction:rtl; padding:0 24px; margin-bottom:6px; }
+#menu .best { color:#888; font-size:13px; margin-bottom:20px; }
+.btn {
+  background:linear-gradient(135deg,#ff6600,#cc2200);
+  border:none; color:#fff;
+  font-size:clamp(18px,5vw,24px); font-weight:bold;
+  padding:16px 60px; border-radius:50px;
+  cursor:pointer; box-shadow:0 0 30px #ff440099;
+  margin:6px; font-family:monospace;
+}
+.btn2 { background:rgba(255,100,0,0.18); border:1px solid rgba(255,100,0,0.4); }
+
+/* شاشة اختيار الشخصية */
+#char-select {
+  position:fixed; inset:0;
+  background:radial-gradient(ellipse,#0a1a0a,#000);
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center; z-index:20;
+}
+#char-select h2 {
+  color:#ff6600; font-family:monospace; font-size:clamp(22px,6vw,36px);
+  margin-bottom:16px; text-shadow:0 0 20px #ff4400;
+}
+.char-grid {
+  display:flex; flex-wrap:wrap; gap:14px;
+  justify-content:center; padding:0 16px; margin-bottom:18px;
+}
+.char-card {
+  width:130px; background:rgba(255,100,0,0.1);
+  border:2px solid rgba(255,100,0,0.3);
+  border-radius:14px; padding:12px 8px;
+  cursor:pointer; text-align:center;
+  transition:all 0.2s;
+}
+.char-card:active, .char-card.selected {
+  border-color:#ff6600;
+  background:rgba(255,100,0,0.28);
+  transform:scale(1.06);
+  box-shadow:0 0 18px #ff440066;
+}
+.char-card canvas { display:block; margin:0 auto 8px; }
+.char-card .cname { color:#ff9944; font-size:13px; font-weight:bold; font-family:monospace; }
+.char-card .cdesc { color:#888; font-size:10px; margin-top:4px; }
+
+/* HUD */
+#hud {
+  position:fixed; top:0; left:0; right:0;
+  display:none; padding:10px 14px;
+  justify-content:space-between; z-index:10;
+  pointer-events:none;
+}
+.hbox {
+  background:linear-gradient(135deg,rgba(0,0,0,0.85),rgba(20,10,0,0.85));
+  border:1px solid rgba(255,120,0,0.5);
+  border-radius:12px; padding:6px 12px;
+  color:#fff; font-size:11px;
+  box-shadow:0 2px 12px rgba(255,80,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.hval { font-size:18px; font-weight:bold; color:#ff8800; display:block; font-family:monospace; text-shadow:0 0 8px #ff6600; }
+.hpbar { width:110px; height:7px; background:#1a0800; border-radius:4px; margin-top:4px; border:1px solid rgba(255,80,0,0.3); }
+.hpfill { height:7px; border-radius:4px; background:linear-gradient(90deg,#ff2200,#ff8800,#44ff44); transition:width .2s; box-shadow:0 0 6px rgba(255,150,0,0.5); }
+
+/* Mobile joystick */
+#joy-wrap {
+  position:fixed; bottom:24px; left:24px;
+  width:120px; height:120px; z-index:15;
+  display:none; pointer-events:all;
+}
+#joy-base {
+  width:120px; height:120px;
+  background:rgba(255,255,255,0.08);
+  border:2px solid rgba(255,255,255,0.22);
+  border-radius:50%; position:absolute;
+}
+#joy-knob {
+  width:52px; height:52px;
+  background:rgba(255,150,50,0.65);
+  border:2px solid rgba(255,200,100,0.85);
+  border-radius:50%; position:absolute;
+  top:34px; left:34px;
+}
+
+#fire-btn {
+  position:fixed; bottom:34px; right:28px;
+  width:90px; height:90px;
+  background:rgba(255,40,40,0.72);
+  border:3px solid rgba(255,100,100,0.9);
+  border-radius:50%; z-index:15;
+  display:none; align-items:center; justify-content:center;
+  font-size:34px; pointer-events:all;
+}
+#reload-btn {
+  position:fixed; bottom:138px; right:34px;
+  width:58px; height:58px;
+  background:rgba(255,200,50,0.65);
+  border:2px solid rgba(255,220,100,0.85);
+  border-radius:50%; z-index:15;
+  display:none; align-items:center; justify-content:center;
+  font-size:22px; pointer-events:all;
+}
+
+/* Messages */
+#wave-msg {
+  position:fixed; top:40%; left:50%; transform:translate(-50%,-50%);
+  color:#ffcc00; font-size:clamp(22px,7vw,38px); font-weight:900;
+  text-shadow:0 0 25px #ffaa00; display:none; pointer-events:none;
+  white-space:nowrap; font-family:monospace; z-index:10;
+}
+#zone-warn {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  color:#ff0000; font-size:clamp(14px,4vw,20px); font-weight:bold;
+  text-shadow:0 0 12px #ff0000; display:none; pointer-events:none;
+  animation:blink .5s infinite alternate; direction:rtl; z-index:10; text-align:center;
+}
+@keyframes blink { from{opacity:.4} to{opacity:1} }
+#rl-msg {
+  position:fixed; bottom:155px; left:50%; transform:translateX(-50%);
+  color:#ffcc00; font-size:15px; font-weight:bold;
+  display:none; pointer-events:none; z-index:10; direction:rtl;
+}
+
+/* Chat Bot */
+#chat-btn {
+  position:fixed; bottom:34px; right:130px;
+  width:58px; height:58px;
+  background:linear-gradient(135deg,#ff6600,#cc2200);
+  border:none; border-radius:50%; z-index:15;
+  display:none; align-items:center; justify-content:center;
+  font-size:26px; cursor:pointer; pointer-events:all;
+  box-shadow:0 0 18px rgba(255,80,0,0.6);
+  animation:chatPulse 2s infinite;
+}
+@keyframes chatPulse {
+  0%,100%{box-shadow:0 0 18px rgba(255,80,0,0.6)}
+  50%{box-shadow:0 0 28px rgba(255,80,0,0.9)}
+}
+#chat-popup {
+  position:fixed; bottom:100px; right:10px;
+  width:300px; max-height:420px;
+  background:linear-gradient(180deg,#1a0800,#0a0400);
+  border:1px solid rgba(255,100,0,0.4);
+  border-radius:18px; z-index:30;
+  display:none; flex-direction:column;
+  overflow:hidden; pointer-events:all;
+  box-shadow:0 8px 32px rgba(255,60,0,0.3);
+}
+#chat-popup-header {
+  padding:12px 14px;
+  background:rgba(255,80,0,0.15);
+  border-bottom:1px solid rgba(255,100,0,0.2);
+  display:flex; justify-content:space-between; align-items:center;
+}
+#chat-popup-header span { color:#ff8800; font-size:13px; font-weight:bold; }
+#chat-close {
+  background:none; border:none; color:#ff6600;
+  font-size:18px; cursor:pointer; pointer-events:all;
+}
+#chat-msgs {
+  flex:1; overflow-y:auto; padding:10px;
+  display:flex; flex-direction:column; gap:8px;
+  max-height:240px;
+}
+.cmsg {
+  padding:8px 12px; border-radius:12px;
+  font-size:12px; line-height:1.5; max-width:90%;
+  animation:fadeIn2 0.3s ease;
+}
+@keyframes fadeIn2{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.cmsg.bot {
+  background:rgba(255,80,0,0.12);
+  border:1px solid rgba(255,100,0,0.2);
+  align-self:flex-start; color:#ffddaa;
+}
+.cmsg.user {
+  background:rgba(0,100,255,0.15);
+  border:1px solid rgba(0,150,255,0.2);
+  align-self:flex-end; color:#aaddff; text-align:right;
+}
+#chat-qr {
+  padding:6px 10px; display:flex;
+  flex-wrap:wrap; gap:5px; justify-content:flex-end;
+  border-top:1px solid rgba(255,100,0,0.15);
+}
+.cqr {
+  background:rgba(255,100,0,0.1);
+  border:1px solid rgba(255,100,0,0.35);
+  color:#ff9944; padding:4px 10px;
+  border-radius:12px; font-size:11px;
+  cursor:pointer; pointer-events:all;
+}
+#chat-inp-area {
+  display:flex; gap:6px; padding:8px 10px;
+  border-top:1px solid rgba(255,100,0,0.15);
+}
+#chat-inp {
+  flex:1; background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,100,0,0.3);
+  color:#fff; padding:7px 12px;
+  border-radius:16px; font-size:12px;
+  outline:none; direction:rtl; pointer-events:all;
+}
+#chat-send {
+  background:linear-gradient(135deg,#ff6600,#cc2200);
+  border:none; color:#fff; width:34px; height:34px;
+  border-radius:50%; font-size:14px; cursor:pointer;
+  pointer-events:all;
+}
+.ctyping {
+  display:flex; gap:3px; padding:8px 12px;
+  align-self:flex-start;
+}
+.ctyping span {
+  width:6px; height:6px; background:#ff6600;
+  border-radius:50%; animation:bounce2 1s infinite;
+}
+.ctyping span:nth-child(2){animation-delay:0.15s}
+.ctyping span:nth-child(3){animation-delay:0.3s}
+@keyframes bounce2{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  position:fixed; top:70px; right:10px;
+  display:flex; flex-direction:column; gap:4px;
+  pointer-events:none; z-index:10;
+}
+.kmsg {
+  background:rgba(0,0,0,0.72); border-left:3px solid #ff4444;
+  padding:4px 8px; color:#ff9999; font-size:12px;
+  border-radius:0 6px 6px 0; animation:kfade 3s forwards;
+}
+@keyframes kfade { 0%{opacity:0;transform:translateX(15px)} 15%{opacity:1;transform:none} 70%{opacity:1} 100%{opacity:0} }
+
+/* Game Over */
+#gameover {
+  position:fixed; inset:0; background:rgba(0,0,0,0.88);
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center; z-index:20;
+}
+#gameover h2 { font-size:clamp(42px,12vw,65px); font-weight:900; color:#ff2200; text-shadow:0 0 30px #ff0000; margin-bottom:12px; font-family:monospace; }
+.gostats { display:flex; gap:14px; margin-bottom:24px; }
+.gobox { background:rgba(255,100,0,0.1); border:1px solid rgba(255,100,0,0.3); border-radius:12px; padding:12px 18px; text-align:center; }
+.gobox .v { font-size:clamp(24px,8vw,36px); font-weight:900; font-family:monospace; }
+.gobox .l { color:rgba(255,150,50,0.7); font-size:12px; }
+</style>
+</head>
+<body>
+
+<!-- Rotate message -->
+<div id="rotate-msg">
+  <div style="font-size:60px">📱➡️</div>
+  <div>حوّل الموبايل أفقي عشان تلعب!</div>
+  <div style="font-size:14px;color:#ff9900">Rotate your phone to landscape</div>
+</div>
+
+<div id="game-root">
+<canvas id="c"></canvas>
+
+<!-- MENU -->
+<div id="menu">
+  <h1>🔥 DESERT FIRE</h1>
+  <div class="sub">جويستيك يسار = تحرك<br>اضغط يمين = إطلاق نار تلقائي نحو أقرب عدو</div>
+  <div class="best">أعلى نتيجة: <b id="best" style="color:#ff9900">0</b> | أعلى قتل: <b id="bestkills" style="color:#ff4444">0</b></div>
+  <button class="btn" onclick="showCharSelect()">🎮 العب دلوقتي!</button>
+</div>
+
+<!-- شاشة اختيار الشخصية -->
+<div id="char-select">
+  <h2>🧍 اختار شخصيتك</h2>
+  <div class="char-grid" id="char-grid"></div>
+  <button class="btn" id="start-btn" onclick="startGame()" style="opacity:0.4;pointer-events:none">ابدأ اللعب ▶</button>
+  <button class="btn btn2" onclick="showMenu()" style="margin-top:8px">⬅ رجوع</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="hbox">
+      <span style="color:#ff9900;font-size:10px">❤️ الحياة</span>
+      <div class="hpbar"><div class="hpfill" id="hpbar" style="width:100%"></div></div>
+      <span style="color:#aaa;font-size:11px" id="hpnum">100/100</span>
+    </div>
+    <div class="hbox">🏆 <span class="hval" id="score">0</span></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+    <div class="hbox">🔫 <span class="hval" id="ammo">30/90</span></div>
+    <div class="hbox">💀 <span class="hval" id="kills">0</span></div>
+    <div class="hbox">👥 <span class="hval" id="wavenum">50/50</span></div>
+  </div>
+</div>
+
+<!-- Mobile Controls -->
+<div id="joy-wrap">
+  <div id="joy-base"></div>
+  <div id="joy-knob"></div>
+</div>
+<div id="fire-btn">🔴</div>
+<div id="reload-btn">🔄</div>
+<button id="chat-btn" onclick="toggleChat()">💬</button>
+
+<!-- Chat Popup -->
+<div id="chat-popup">
+  <div id="chat-popup-header">
+    <span>🔥 مساعد Desert Fire</span>
+    <button id="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-msgs"></div>
+  <div id="chat-qr"></div>
+  <div id="chat-inp-area">
+    <button id="chat-send" onclick="chatSend()">➤</button>
+    <input id="chat-inp" placeholder="اسأل..." onkeydown="if(event.key==='Enter')chatSend()">
+  </div>
+</div>
+
+<!-- Messages -->
+<div id="wave-msg"></div>
+<div id="zone-warn">⚠️ اخرج من المنطقة!</div>
+<div id="rl-msg">🔄 جاري التحميل...</div>
+<div id="kfeed"></div>
+
+<!-- GAME OVER -->
+<div id="gameover">
+  <h2>💀 مت!</h2>
+  <div class="gostats">
+    <div class="gobox"><div class="v" id="go-score" style="color:#ff6600">0</div><div class="l">النقاط</div></div>
+    <div class="gobox"><div class="v" id="go-kills" style="color:#ff4444">0</div><div class="l">القتلى</div></div>
+    <div class="gobox"><div class="v" id="go-wave" style="color:#88ddff">1</div><div class="l">الموجة</div></div>
+  </div>
+  <button class="btn" onclick="startGame()">🔄 العب تاني</button>
+  <button class="btn btn2" onclick="showMenu()">🏠 القائمة</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+// ---- STATE ----
+const WORLD = 2200;
+let G = null, raf = null;
+let bestScore = 0, bestKills = 0;
+
+// ---- JOYSTICK ----
+const joy = { active:false, id:-1, sx:0, sy:0, dx:0, dy:0 };
+let mobileFiring = false;
+let autoAim = true; // on mobile, auto-aim at nearest enemy
+
+const jWrap = document.getElementById('joy-wrap');
+const jKnob = document.getElementById('joy-knob');
+const fireBtn = document.getElementById('fire-btn');
+const reloadBtn = document.getElementById('reload-btn');
+
+jWrap.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joy.active=true; joy.id=t.identifier;
+  joy.sx=t.clientX; joy.sy=t.clientY; joy.dx=0; joy.dy=0;
+}, {passive:false});
+jWrap.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier !== joy.id) continue;
+    const dx=t.clientX-joy.sx, dy=t.clientY-joy.sy;
+    const len=Math.hypot(dx,dy), max=48;
+    joy.dx = dx/Math.max(len,1)*Math.min(len,max)/max;
+    joy.dy = dy/Math.max(len,1)*Math.min(len,max)/max;
+    jKnob.style.transform = `translate(${joy.dx*max}px,${joy.dy*max}px)`;
+  }
+}, {passive:false});
+jWrap.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier===joy.id) { joy.active=false; joy.dx=0; joy.dy=0; jKnob.style.transform=''; }
+  }
+}, {passive:false});
+
+fireBtn.addEventListener('touchstart', e => { e.preventDefault(); mobileFiring=true; }, {passive:false});
+fireBtn.addEventListener('touchend', e => { e.preventDefault(); mobileFiring=false; }, {passive:false});
+reloadBtn.addEventListener('touchstart', e => { e.preventDefault(); if(G) G.reload(); }, {passive:false});
+
+// Desktop
+const keys = {};
+document.addEventListener('keydown', e => { keys[e.code]=true; if(e.code==='KeyR'&&G) G.reload(); if(e.code==='Escape'&&G) showMenu(); });
+document.addEventListener('keyup', e => { keys[e.code]=false; });
+let mx=0, my=0, mfire=false;
+canvas.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
+canvas.addEventListener('mousedown', e => { if(e.button===0) mfire=true; });
+canvas.addEventListener('mouseup', e => { if(e.button===0) mfire=false; });
+
+// ---- HELPERS ----
+function rnd(a,b){return a+Math.random()*(b-a);}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)||window.innerWidth<768;
+
+// تصادم مع الـ cover
+function coverCollide(x, y, r, covers) {
+  for(const c of covers) {
+    if(c.type==='wall') {
+      const hw=c.w/2+r, hh=c.h/2+r;
+      if(x>c.x-hw&&x<c.x+hw&&y>c.y-hh&&y<c.y+hh) return true;
+    } else if(c.type==='box') {
+      const hs=c.s/2+r;
+      if(x>c.x-hs&&x<c.x+hs&&y>c.y-hs&&y<c.y+hs) return true;
+    } else if(c.type==='car') {
+      // سيارة = مستطيل 44x24 مع rotation
+      const dx=x-c.x, dy=y-c.y;
+      const cos=Math.cos(-c.rot), sin=Math.sin(-c.rot);
+      const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
+      if(Math.abs(lx)<22+r&&Math.abs(ly)<12+r) return true;
+    }
+  }
+  return false;
+}
+
+// دفع الشخص بعيد عن الـ cover - محسّن
+function pushOutOfCover(obj, r, covers) {
+  for(let iter=0; iter<3; iter++) { // كرر 3 مرات عشان يتأكد
+    for(const c of covers) {
+      if(c.type==='wall') {
+        const hw=c.w/2+r, hh=c.h/2+r;
+        if(obj.x>c.x-hw&&obj.x<c.x+hw&&obj.y>c.y-hh&&obj.y<c.y+hh) {
+          const ox=obj.x-c.x, oy=obj.y-c.y;
+          const overlapX = hw - Math.abs(ox);
+          const overlapY = hh - Math.abs(oy);
+          if(overlapX < overlapY) obj.x += ox>0?overlapX:-overlapX;
+          else obj.y += oy>0?overlapY:-overlapY;
+        }
+      } else if(c.type==='box') {
+        const hs=c.s/2+r;
+        if(obj.x>c.x-hs&&obj.x<c.x+hs&&obj.y>c.y-hs&&obj.y<c.y+hs) {
+          const ox=obj.x-c.x, oy=obj.y-c.y;
+          const overlapX = hs - Math.abs(ox);
+          const overlapY = hs - Math.abs(oy);
+          if(overlapX < overlapY) obj.x += ox>0?overlapX:-overlapX;
+          else obj.y += oy>0?overlapY:-overlapY;
+        }
+      } else if(c.type==='car') {
+        const dx=obj.x-c.x, dy=obj.y-c.y;
+        const cos=Math.cos(-c.rot), sin=Math.sin(-c.rot);
+        const lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
+        const hw2=22+r, hh2=12+r;
+        if(Math.abs(lx)<hw2&&Math.abs(ly)<hh2) {
+          const overlapX = hw2 - Math.abs(lx);
+          const overlapY = hh2 - Math.abs(ly);
+          let nlx=lx, nly=ly;
+          if(overlapX < overlapY) nlx += lx>0?overlapX:-overlapX;
+          else nly += ly>0?overlapY:-overlapY;
+          obj.x = c.x + (nlx*Math.cos(c.rot) - nly*Math.sin(c.rot));
+          obj.y = c.y + (nlx*Math.sin(c.rot) + nly*Math.cos(c.rot));
+        }
+      }
+    }
+  }
+}
+
+function addKill(msg) {
+  const f=document.getElementById('kfeed');
+  const d=document.createElement('div'); d.className='kmsg'; d.textContent=msg;
+  f.appendChild(d); setTimeout(()=>d.remove(),3000);
+}
+function showWaveMsg(txt) {
+  const a=document.getElementById('wave-msg');
+  a.textContent=txt; a.style.display='block'; a.style.opacity='1';
+  setTimeout(()=>{ a.style.transition='opacity 1s'; a.style.opacity='0'; setTimeout(()=>{a.style.display='none';a.style.transition='';},1000); },1800);
+}
+
+// ---- GAME ----
+class Game {
+  constructor() {
+    this.p = { x:WORLD/2, y:WORLD/2, angle:0, hp:100, maxHp:100, ammo:30, maxAmmo:30, reserve:90, speed:3.5, size:16, shootCD:0, reloading:false, reloadT:0, invincible:0, muzzle:0, score:0, kills:0 };
+    this.bullets = [];
+    this.eBullets = [];
+    this.enemies = [];
+    this.particles = [];
+    this.pickups = this.mkPickups();
+    this.trees = this.mkTrees();
+    this.rocks = this.mkRocks();
+    this.covers = this.mkCovers();
+    this.totalBots = 49;
+    this.aliveBots = 49;
+    this.wave = 0;
+    this.waveCD = 60;
+    this.alive = true;
+    this.zone = { x:WORLD/2, y:WORLD/2, r:WORLD*0.46 };
+    this.zoneT = { x:WORLD/2, y:WORLD/2, r:320 };
+    this.zoneShrink = false;
+    this.zoneTimer = 700;
+    this.nextWave();
+  }
+
+  mkTrees() { return Array.from({length:80},()=>({x:rnd(50,WORLD-50),y:rnd(50,WORLD-50),r:rnd(12,24),c:`hsl(${rnd(100,140)},45%,${rnd(18,30)}%)`})); }
+  mkRocks() { return Array.from({length:40},()=>({x:rnd(50,WORLD-50),y:rnd(50,WORLD-50),w:rnd(22,52),h:rnd(16,30)})); }
+  mkPickups() { return Array.from({length:14},()=>({x:rnd(150,WORLD-150),y:rnd(150,WORLD-150),type:Math.random()<0.5?'hp':'ammo',taken:false})); }
+  mkCovers() {
+    const c=[];
+    for(let i=0;i<25;i++) c.push({type:'wall',x:rnd(100,WORLD-100),y:rnd(100,WORLD-100),w:rnd(60,130),h:rnd(15,28)});
+    for(let i=0;i<20;i++) c.push({type:'box',x:rnd(100,WORLD-100),y:rnd(100,WORLD-100),s:rnd(20,38)});
+    for(let i=0;i<10;i++) c.push({type:'car',x:rnd(100,WORLD-100),y:rnd(100,WORLD-100),rot:rnd(0,Math.PI)});
+    return c;
+  }
+
+  reload() {
+    const p=this.p;
+    if(p.reloading||p.ammo===p.maxAmmo||p.reserve<=0) return;
+    p.reloading=true; p.reloadT=100;
+  }
+
+  nextWave() {
+    this.wave++;
+    // كل موجة بتجيب بوتات جديدة من الـ 49
+    const spawned = this.enemies.length;
+    const remaining = this.totalBots - spawned - (this.totalBots - this.aliveBots);
+    const n = Math.min(5 + this.wave * 2, Math.max(0, remaining));
+    for (let i=0;i<n;i++) {
+      let ex,ey;
+      do { ex=rnd(80,WORLD-80); ey=rnd(80,WORLD-80); } while(dst({x:ex,y:ey},this.p)<320);
+      const roll=Math.random();
+      let type='normal';
+      if(this.wave>=3&&roll<0.2) type='tank';
+      else if(this.wave>=2&&roll<0.4) type='fast';
+      const hp=type==='tank'?200:type==='fast'?40:80;
+      const names=['أحمد','محمد','علي','خالد','عمر','يوسف','إبراهيم','مصطفى','كريم','طارق','سامي','فارس','نادر','وليد','جمال'];
+      this.enemies.push({x:ex,y:ey,hp,maxHp:hp,type,size:type==='tank'?22:type==='fast'?12:15,speed:type==='tank'?0.7:type==='fast'?3.0:1.5,angle:0,shootCD:rnd(40,80),flash:0,dead:false,name:names[Math.floor(Math.random()*names.length)]});
+    }
+    if(n>0) showWaveMsg(`🎮 ${this.aliveBots} لاعب متبقي`);
+  }
+
+  spawnP(x,y,color,n=8) {
+    for(let i=0;i<n;i++) this.particles.push({x,y,vx:rnd(-4,4),vy:rnd(-4,4),life:1,decay:rnd(0.04,0.08),size:rnd(2,5),color});
+  }
+
+  update() {
+    if(!this.alive) return;
+    const p=this.p;
+    const W=canvas.width, H=canvas.height;
+    if(p.invincible>0) p.invincible--;
+    if(p.muzzle>0) p.muzzle--;
+    if(p.shootCD>0) p.shootCD--;
+
+    // ---- MOVE ----
+    if(isMobile) {
+      if(joy.active&&(Math.abs(joy.dx)>0.05||Math.abs(joy.dy)>0.05)) {
+        const nx=p.x+joy.dx*p.speed, ny=p.y+joy.dy*p.speed;
+        if(!coverCollide(nx,p.y,p.size,this.covers)) p.x=nx;
+        if(!coverCollide(p.x,ny,p.size,this.covers)) p.y=ny;
+      }
+      if(this.enemies.length>0) {
+        let nearest=null, minD=9999;
+        this.enemies.forEach(e=>{ const d=dst(p,e); if(d<minD){minD=d;nearest=e;} });
+        if(nearest) p.angle = Math.atan2(nearest.y-p.y, nearest.x-p.x);
+      }
+      if(mobileFiring&&p.shootCD<=0&&!p.reloading) {
+        if(p.ammo>0) {
+          p.ammo--; p.shootCD=10; p.muzzle=6;
+          const sp=rnd(-0.08,0.08);
+          const bx=p.x+Math.cos(p.angle)*(p.size+12), by=p.y+Math.sin(p.angle)*(p.size+12);
+          this.bullets.push({x:bx,y:by,angle:p.angle+sp,speed:13,dead:false,trail:[]});
+        } else this.reload();
+      }
+    } else {
+      let dx=0,dy=0;
+      if(keys['KeyW']||keys['ArrowUp']) dy=-1;
+      if(keys['KeyS']||keys['ArrowDown']) dy=1;
+      if(keys['KeyA']||keys['ArrowLeft']) dx=-1;
+      if(keys['KeyD']||keys['ArrowRight']) dx=1;
+      if(dx&&dy){dx*=0.707;dy*=0.707;}
+      const nx=p.x+dx*p.speed, ny=p.y+dy*p.speed;
+      if(!coverCollide(nx,p.y,p.size,this.covers)) p.x=nx;
+      if(!coverCollide(p.x,ny,p.size,this.covers)) p.y=ny;
+      const camX=p.x-W/2, camY=p.y-H/2;
+      p.angle = Math.atan2(my-(p.y-camY), mx-(p.x-camX));
+      if(mfire&&p.shootCD<=0&&!p.reloading) {
+        if(p.ammo>0) {
+          p.ammo--; p.shootCD=8; p.muzzle=6;
+          const bx=p.x+Math.cos(p.angle)*(p.size+12), by=p.y+Math.sin(p.angle)*(p.size+12);
+          this.bullets.push({x:bx,y:by,angle:p.angle+rnd(-0.05,0.05),speed:13,dead:false,trail:[]});
+        } else this.reload();
+      }
+    }
+
+    p.x=clamp(p.x,p.size,WORLD-p.size); p.y=clamp(p.y,p.size,WORLD-p.size);
+    pushOutOfCover(p, p.size, this.covers);
+
+    // ---- RELOAD ----
+    if(p.reloading) {
+      p.reloadT--;
+      if(p.reloadT<=0) {
+        const need=p.maxAmmo-p.ammo, take=Math.min(need,p.reserve);
+        p.ammo+=take; p.reserve-=take; p.reloading=false;
+      }
+    }
+
+    // ---- ZONE ----
+    this.zoneTimer--;
+    if(this.zoneTimer<=0&&!this.zoneShrink){this.zoneShrink=true;this.zoneTimer=450;}
+    if(this.zoneShrink){
+      this.zone.r-=0.2;
+      if(this.zone.r<=this.zoneT.r){
+        this.zoneShrink=false; this.zoneTimer=400;
+        this.zoneT={x:this.zone.x+rnd(-220,220),y:this.zone.y+rnd(-220,220),r:Math.max(100,this.zone.r-180)};
+      }
+    }
+    const inZone=dst(p,this.zone)<this.zone.r;
+    document.getElementById('zone-warn').style.display=inZone?'none':'block';
+    if(!inZone&&p.invincible<=0&&Math.random()<0.07){p.hp-=1;p.invincible=6;}
+
+    // ---- PICKUPS ----
+    this.pickups.forEach(pk=>{
+      if(pk.taken||dst(p,pk)>=20) return;
+      pk.taken=true;
+      if(pk.type==='hp'){p.hp=Math.min(p.maxHp,p.hp+30);this.spawnP(pk.x,pk.y,'#44ff88',12);}
+      else{p.reserve=Math.min(90,p.reserve+30);this.spawnP(pk.x,pk.y,'#ffcc00',12);}
+    });
+
+    // ---- BULLETS ----
+    this.bullets.forEach(b=>{
+      if(b.dead) return;
+      b.trail.push({x:b.x,y:b.y});
+      if(b.trail.length>5) b.trail.shift();
+      b.x+=Math.cos(b.angle)*b.speed; b.y+=Math.sin(b.angle)*b.speed;
+      if(b.x<0||b.x>WORLD||b.y<0||b.y>WORLD){b.dead=true;return;}
+      // الطلقة تتوقف عند الـ cover
+      if(coverCollide(b.x,b.y,3,this.covers)){b.dead=true;this.spawnP(b.x,b.y,'#888',4);return;}
+      this.enemies.forEach(e=>{
+        if(b.dead||e.dead) return;
+        if(dst(b,e)<e.size){
+          b.dead=true; e.hp-=20; e.flash=8;
+          this.spawnP(e.x,e.y,'#ff8800',6);
+          if(e.hp<=0){
+            e.dead=true; p.kills++; p.score+=e.type==='tank'?300:e.type==='fast'?150:100;
+            this.aliveBots--;
+            this.spawnP(e.x,e.y,'#ff4400',16);
+            addKill(`💀 ${e.name||'لاعب'} انهال! (${this.aliveBots} متبقي)`);
+          }
+        }
+      });
+    });
+    this.bullets=this.bullets.filter(b=>!b.dead);
+
+    // ---- ENEMY BULLETS ----
+    this.eBullets.forEach(b=>{
+      if(b.dead) return;
+      b.x+=Math.cos(b.angle)*b.speed; b.y+=Math.sin(b.angle)*b.speed; b.life--;
+      if(b.life<=0||b.x<0||b.x>WORLD||b.y<0||b.y>WORLD){b.dead=true;return;}
+      if(coverCollide(b.x,b.y,3,this.covers)){b.dead=true;this.spawnP(b.x,b.y,'#888',4);return;}
+      if(dst(b,p)<p.size&&p.invincible<=0){
+        b.dead=true; p.hp-=b.dmg; p.invincible=20;
+        this.spawnP(p.x,p.y,'#ff2244',6);
+      }
+    });
+    this.eBullets=this.eBullets.filter(b=>!b.dead);
+
+    // ---- ENEMIES ----
+    this.enemies.forEach(e=>{
+      if(e.dead) return;
+      if(e.flash>0) e.flash--;
+      const ddx=p.x-e.x,ddy=p.y-e.y,d=Math.hypot(ddx,ddy);
+      e.angle=Math.atan2(ddy,ddx);
+      if(d>80){
+        const nx=e.x+Math.cos(e.angle)*e.speed, ny=e.y+Math.sin(e.angle)*e.speed;
+        if(!coverCollide(nx,e.y,e.size,this.covers)) e.x=nx;
+        if(!coverCollide(e.x,ny,e.size,this.covers)) e.y=ny;
+      }
+      e.x=clamp(e.x,20,WORLD-20); e.y=clamp(e.y,20,WORLD-20);
+      e.shootCD--;
+      if(e.shootCD<=0&&d<500){
+        const rate=e.type==='tank'?110:e.type==='fast'?35:65;
+        e.shootCD=rate+rnd(0,25);
+        this.eBullets.push({x:e.x,y:e.y,angle:e.angle+rnd(-0.22,0.22),speed:6,life:160,dmg:e.type==='tank'?20:e.type==='fast'?8:13,dead:false});
+      }
+    });
+    this.enemies=this.enemies.filter(e=>!e.dead);
+
+    // ---- PARTICLES ----
+    this.particles.forEach(pt=>{pt.x+=pt.vx;pt.y+=pt.vy;pt.vx*=0.91;pt.vy*=0.91;pt.life-=pt.decay;});
+    this.particles=this.particles.filter(pt=>pt.life>0);
+
+    // ---- WAVE ----
+    if(this.enemies.length===0){
+      this.waveCD--;
+      if(this.waveCD<=0){
+        this.waveCD=90;
+        if(this.aliveBots>0) this.nextWave();
+        else {
+          // فاز اللاعب!
+          this.alive=false;
+          document.getElementById('go-score').textContent=p.score;
+          document.getElementById('go-kills').textContent=p.kills;
+          document.getElementById('go-wave').textContent='🏆';
+          document.querySelector('#gameover h2').textContent='🏆 فزت!';
+          document.querySelector('#gameover h2').style.color='#ffcc00';
+          setTimeout(()=>document.getElementById('gameover').style.display='flex',600);
+        }
+      }
+    }
+
+    // ---- DEATH ----
+    if(p.hp<=0){
+      p.hp=0; this.alive=false;
+      if(p.score>bestScore)bestScore=p.score;
+      if(p.kills>bestKills)bestKills=p.kills;
+      document.getElementById('best').textContent=bestScore;
+      document.getElementById('bestkills').textContent=bestKills;
+      document.getElementById('go-score').textContent=p.score;
+      document.getElementById('go-kills').textContent=p.kills;
+      document.getElementById('go-wave').textContent=this.wave;
+      setTimeout(()=>document.getElementById('gameover').style.display='flex',600);
+      return;
+    }
+
+    // ---- HUD ----
+    document.getElementById('hpbar').style.width=(Math.max(0,p.hp/p.maxHp)*100)+'%';
+    document.getElementById('hpnum').textContent=`${Math.ceil(Math.max(0,p.hp))}/100`;
+    document.getElementById('score').textContent=p.score;
+    document.getElementById('kills').textContent=p.kills;
+    document.getElementById('ammo').textContent=p.reloading?'تحميل...':`${p.ammo}/${p.reserve}`;
+    document.getElementById('wavenum').textContent=`${this.aliveBots}/50`;
+    document.getElementById('rl-msg').style.display=p.reloading?'block':'none';
+  }
+
+  draw() {
+    const p=this.p;
+    const W=canvas.width, H=canvas.height;
+    const camX=p.x-W/2, camY=p.y-H/2;
+    const t=Date.now();
+
+    // ====== أرض صحراء جميلة ======
+    // تدرج الأرض
+    const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H));
+    grd.addColorStop(0,'#2a1f0a');
+    grd.addColorStop(0.5,'#1e1608');
+    grd.addColorStop(1,'#120e04');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+    // رمال متحركة
+    ctx.save();
+    for(let i=0;i<6;i++){
+      const sx=((t*0.01+i*200)%WORLD)-camX;
+      const sy=((t*0.008+i*150)%WORLD)-camY;
+      if(sx>-100&&sx<W+100&&sy>-100&&sy<H+100){
+        ctx.beginPath();
+        ctx.ellipse(sx,sy,rnd(30,80),rnd(8,18),rnd(0,Math.PI),0,Math.PI*2);
+        ctx.fillStyle=`rgba(180,140,60,0.04)`;ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // شبكة خفيفة
+    ctx.strokeStyle='rgba(255,200,80,0.03)'; ctx.lineWidth=1;
+    for(let x=(80-camX%80)%80;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=(80-camY%80)%80;y<H;y+=80){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // Zone
+    const zx=this.zone.x-camX,zy=this.zone.y-camY;
+    ctx.save();
+    ctx.beginPath();ctx.rect(0,0,W,H);ctx.arc(zx,zy,this.zone.r,0,Math.PI*2,true);
+    ctx.fillStyle='rgba(180,0,0,0.12)';ctx.fill();
+    // حافة المنطقة متوهجة
+    ctx.beginPath();ctx.arc(zx,zy,this.zone.r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,220,255,0.7)';ctx.lineWidth=3;ctx.setLineDash([18,10]);
+    ctx.shadowBlur=15;ctx.shadowColor='#00ddff';ctx.stroke();
+    ctx.shadowBlur=0;ctx.setLineDash([]);
+    ctx.restore();
+
+    // ====== أشجار محسّنة ======
+    this.trees.forEach(tr=>{
+      const tx=tr.x-camX,ty=tr.y-camY;
+      if(tx<-50||tx>W+50||ty<-50||ty>H+50) return;
+      // ظل الشجرة
+      ctx.beginPath();ctx.ellipse(tx+4,ty+6,tr.r*0.9,tr.r*0.4,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fill();
+      // جذع
+      ctx.fillStyle='#5a3510';
+      ctx.fillRect(tx-3,ty+tr.r*0.4,6,14);
+      // تاج خارجي
+      ctx.beginPath();ctx.arc(tx,ty,tr.r+3,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fill();
+      // تاج داخلي
+      ctx.beginPath();ctx.arc(tx,ty,tr.r,0,Math.PI*2);
+      ctx.fillStyle=tr.c;ctx.fill();
+      // بريق الشجرة
+      ctx.beginPath();ctx.arc(tx-tr.r*0.3,ty-tr.r*0.3,tr.r*0.35,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fill();
+    });
+
+    // ====== صخور محسّنة ======
+    this.rocks.forEach(r=>{
+      const rx=r.x-camX,ry=r.y-camY;
+      if(rx<-60||rx>W+60||ry<-60||ry>H+60) return;
+      // ظل
+      ctx.beginPath();ctx.ellipse(rx+4,ry+5,r.w/2,r.h/3,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fill();
+      // جسم
+      const rg=ctx.createRadialGradient(rx-r.w*0.2,ry-r.h*0.2,1,rx,ry,r.w/2);
+      rg.addColorStop(0,'#6a5a40');rg.addColorStop(1,'#3a2e1e');
+      ctx.beginPath();ctx.ellipse(rx,ry,r.w/2,r.h/2,0,0,Math.PI*2);
+      ctx.fillStyle=rg;ctx.fill();
+      ctx.strokeStyle='rgba(255,220,150,0.1)';ctx.lineWidth=1;ctx.stroke();
+    });
+
+    // ====== Covers محسّنة ======
+    this.covers.forEach(c=>{
+      const cx2=c.x-camX, cy2=c.y-camY;
+      if(cx2<-150||cx2>W+150||cy2<-150||cy2>H+150) return;
+      if(c.type==='wall'){
+        // ظل
+        ctx.fillStyle='rgba(0,0,0,0.35)';
+        ctx.fillRect(cx2-c.w/2+5,cy2+c.h/2,c.w,7);
+        // جسم الجدار
+        const wg=ctx.createLinearGradient(cx2-c.w/2,cy2-c.h/2,cx2+c.w/2,cy2+c.h/2);
+        wg.addColorStop(0,'#9a8060');wg.addColorStop(0.5,'#7a6040');wg.addColorStop(1,'#5a4028');
+        ctx.fillStyle=wg;
+        ctx.fillRect(cx2-c.w/2,cy2-c.h/2,c.w,c.h);
+        // خطوط الطوب
+        ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=1;
+        for(let bx=cx2-c.w/2;bx<cx2+c.w/2;bx+=20){
+          ctx.beginPath();ctx.moveTo(bx,cy2-c.h/2);ctx.lineTo(bx,cy2+c.h/2);ctx.stroke();
+        }
+        ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+        ctx.strokeRect(cx2-c.w/2,cy2-c.h/2,c.w,c.h);
+      } else if(c.type==='box'){
+        // ظل
+        ctx.fillStyle='rgba(0,0,0,0.3)';
+        ctx.fillRect(cx2-c.s/2+4,cy2+c.s/2,c.s,5);
+        // صندوق خشب
+        const bg=ctx.createLinearGradient(cx2-c.s/2,cy2-c.s/2,cx2+c.s/2,cy2+c.s/2);
+        bg.addColorStop(0,'#c4922a');bg.addColorStop(1,'#7a5510');
+        ctx.fillStyle=bg;
+        ctx.fillRect(cx2-c.s/2,cy2-c.s/2,c.s,c.s);
+        ctx.strokeStyle='#5a3a00';ctx.lineWidth=2;
+        ctx.strokeRect(cx2-c.s/2,cy2-c.s/2,c.s,c.s);
+        ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(cx2-c.s/2,cy2);ctx.lineTo(cx2+c.s/2,cy2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(cx2,cy2-c.s/2);ctx.lineTo(cx2,cy2+c.s/2);ctx.stroke();
+        // بريق
+        ctx.fillStyle='rgba(255,255,255,0.07)';
+        ctx.fillRect(cx2-c.s/2+2,cy2-c.s/2+2,c.s/2,c.s/3);
+      } else if(c.type==='car'){
+        ctx.save();ctx.translate(cx2,cy2);ctx.rotate(c.rot);
+        // ظل السيارة
+        ctx.beginPath();ctx.ellipse(3,5,24,10,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fill();
+        // هيكل السيارة
+        const cg=ctx.createLinearGradient(-22,-12,22,12);
+        cg.addColorStop(0,'#778899');cg.addColorStop(0.5,'#556677');cg.addColorStop(1,'#334455');
+        ctx.fillStyle=cg;
+        ctx.beginPath();ctx.roundRect(-22,-12,44,24,4);ctx.fill();
+        // سقف
+        ctx.fillStyle='#445566';
+        ctx.beginPath();ctx.roundRect(-14,-20,28,12,3);ctx.fill();
+        // زجاج أمامي
+        ctx.fillStyle='rgba(150,220,255,0.5)';
+        ctx.fillRect(-12,-18,24,9);
+        ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;ctx.stroke();
+        // خط وسط الزجاج
+        ctx.strokeStyle='rgba(0,0,0,0.3)';
+        ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(0,-9);ctx.stroke();
+        // عجلات
+        ctx.fillStyle='#111';
+        [[-20,-14],[ 12,-14],[-20, 9],[12,9]].forEach(([ex,ey])=>{
+          ctx.beginPath();ctx.roundRect(ex,ey,8,6,2);ctx.fill();
+          ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.stroke();
+        });
+        // بريق السيارة
+        ctx.fillStyle='rgba(255,255,255,0.08)';
+        ctx.fillRect(-20,-10,44,6);
+        ctx.restore();
+      }
+    });
+
+    // Pickups محسّنة
+    this.pickups.forEach(pk=>{
+      if(pk.taken) return;
+      const px=pk.x-camX,py=pk.y-camY;
+      if(px<-30||px>W+30||py<-30||py>H+30) return;
+      const bob=Math.sin(t*0.005)*4;
+      const pulse=0.7+Math.sin(t*0.006)*0.3;
+      ctx.save();ctx.translate(px,py+bob);
+      // توهج خارجي
+      ctx.beginPath();ctx.arc(0,0,20*pulse,0,Math.PI*2);
+      ctx.fillStyle=pk.type==='hp'?'rgba(0,255,100,0.08)':'rgba(255,220,0,0.08)';ctx.fill();
+      // دائرة رئيسية
+      ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);
+      ctx.fillStyle=pk.type==='hp'?'rgba(0,255,100,0.2)':'rgba(255,200,0,0.2)';ctx.fill();
+      ctx.strokeStyle=pk.type==='hp'?'#44ff88':'#ffcc00';ctx.lineWidth=2;
+      ctx.shadowBlur=12;ctx.shadowColor=pk.type==='hp'?'#44ff88':'#ffcc00';
+      ctx.stroke();ctx.shadowBlur=0;
+      ctx.fillStyle=pk.type==='hp'?'#44ff88':'#ffcc00';
+      ctx.font='bold 15px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(pk.type==='hp'?'♥':'⬡',0,0);
+      ctx.restore();
+    });
+
+    // Particles
+    this.particles.forEach(pt=>{
+      ctx.globalAlpha=pt.life;
+      ctx.beginPath();ctx.arc(pt.x-camX,pt.y-camY,pt.size*pt.life,0,Math.PI*2);
+      ctx.fillStyle=pt.color;ctx.fill();
+    });
+    ctx.globalAlpha=1;
+
+    // Enemy bullets
+    this.eBullets.forEach(b=>{
+      ctx.beginPath();ctx.arc(b.x-camX,b.y-camY,4,0,Math.PI*2);
+      ctx.fillStyle='#ff4400';ctx.shadowBlur=8;ctx.shadowColor='#ff2200';ctx.fill();ctx.shadowBlur=0;
+    });
+
+    // Player bullets
+    this.bullets.forEach(b=>{
+      for(let i=0;i<b.trail.length;i++){
+        const tr=b.trail[i];
+        ctx.globalAlpha=i/b.trail.length*0.4;
+        ctx.beginPath();ctx.arc(tr.x-camX,tr.y-camY,2,0,Math.PI*2);ctx.fillStyle='#ffdd44';ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      ctx.beginPath();ctx.arc(b.x-camX,b.y-camY,3,0,Math.PI*2);
+      ctx.fillStyle='#ffee55';ctx.shadowBlur=8;ctx.shadowColor='#ffaa00';ctx.fill();ctx.shadowBlur=0;
+    });
+
+    // Enemies
+    this.enemies.forEach(e=>{
+      const ex=e.x-camX,ey=e.y-camY;
+      if(ex<-40||ex>W+40||ey<-40||ey>H+40) return;
+      ctx.save();ctx.translate(ex,ey);ctx.rotate(e.angle);
+      const eCol=e.flash>0?'#fff':e.type==='tank'?'#aa2200':e.type==='fast'?'#aa00cc':'#cc3300';
+      const walk2=Math.sin(Date.now()*0.012)*3;
+      const sc2=e.sz||1;
+
+      // ظل
+      ctx.beginPath();ctx.ellipse(0,13*sc2,8*sc2,3*sc2,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fill();
+
+      // رجلين
+      ctx.fillStyle=e.flash>0?'#fff':'#440000';
+      ctx.beginPath();ctx.ellipse(-4*sc2,9*sc2+walk2,3*sc2,6*sc2,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(4*sc2,9*sc2-walk2,3*sc2,6*sc2,0,0,Math.PI*2);ctx.fill();
+      // أحذية
+      ctx.fillStyle='#111';
+      ctx.beginPath();ctx.ellipse(-4*sc2,15*sc2+walk2,4*sc2,2.5*sc2,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(4*sc2,15*sc2-walk2,4*sc2,2.5*sc2,0,0,Math.PI*2);ctx.fill();
+
+      // جسم
+      ctx.beginPath();ctx.ellipse(0,1*sc2,8*sc2,9*sc2,0,0,Math.PI*2);
+      ctx.fillStyle=eCol;ctx.shadowBlur=10;ctx.shadowColor=eCol;ctx.fill();ctx.shadowBlur=0;
+
+      // سلاح
+      ctx.fillStyle='#333';
+      ctx.fillRect(4*sc2,-2*sc2,(e.size+8)*sc2,4*sc2);
+
+      // رأس
+      ctx.beginPath();ctx.arc(0,-10*sc2,8*sc2,0,Math.PI*2);
+      ctx.fillStyle=e.flash>0?'#fff':'#cc8866';ctx.fill();
+
+      // خوذة عدو
+      ctx.beginPath();ctx.arc(0,-13*sc2,7*sc2,Math.PI,0);
+      ctx.fillStyle=eCol;ctx.fill();
+      ctx.fillRect(-7*sc2,-13*sc2,14*sc2,3*sc2);
+
+      // عيون عدو
+      ctx.fillStyle='#ff2200';
+      ctx.beginPath();ctx.arc(-3*sc2,-10*sc2,1.5*sc2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(3*sc2,-10*sc2,1.5*sc2,0,Math.PI*2);ctx.fill();
+
+      // اسم اللاعب
+      ctx.rotate(-e.angle);
+      ctx.fillStyle='rgba(0,0,0,0.5)';
+      ctx.fillRect(-18,-28*sc2,36,12);
+      ctx.fillStyle='#fff';ctx.font=`${9*sc2}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(e.name||'bot',-0,-22*sc2);
+
+      // شريط HP
+      ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(-e.size,-e.size*2-8,e.size*2,5);
+      const hpr=e.hp/e.maxHp;
+      ctx.fillStyle=hpr>0.5?'#44ff44':hpr>0.25?'#ffaa00':'#ff2200';
+      ctx.fillRect(-e.size,-e.size*2-8,e.size*2*hpr,5);
+      ctx.restore();
+    });
+
+    // Player
+    const flash=p.invincible>0&&Math.floor(p.invincible/5)%2===0;
+    if(!flash){
+      const px2=p.x-camX, py2=p.y-camY;
+      const walk = Math.sin(Date.now()*0.015)*4;
+      const skin = this.charSkin || {bodyColor:'#2255cc', helmetColor:'#1a3a00', skinColor:'#fdbcb4'};
+
+      ctx.save();
+      ctx.translate(px2, py2);
+
+      // ظل
+      ctx.beginPath();ctx.ellipse(0,14,10,4,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fill();
+
+      // رجلين
+      ctx.fillStyle=skin.bodyColor;
+      ctx.beginPath();ctx.ellipse(-5,10+walk,4,7,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(5,10-walk,4,7,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#111';
+      ctx.beginPath();ctx.ellipse(-5,17+walk,5,3,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(5,17-walk,5,3,0,0,Math.PI*2);ctx.fill();
+
+      // جسم + سلاح بيتدور مع الزاوية
+      ctx.rotate(p.angle);
+      ctx.fillStyle=skin.bodyColor;
+      ctx.beginPath();ctx.ellipse(0,2,9,10,0,0,Math.PI*2);
+      ctx.shadowBlur=12;ctx.shadowColor=skin.bodyColor;ctx.fill();ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(0,8);ctx.stroke();
+
+      // يد + سلاح
+      ctx.fillStyle=skin.skinColor;
+      ctx.beginPath();ctx.ellipse(9,1,4,3,0.4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#333';
+      ctx.fillRect(9,-2,p.size+6,5);
+      ctx.fillStyle='#555';
+      ctx.fillRect(p.size+3,-3,9,7);
+      if(p.muzzle>0){
+        ctx.beginPath();ctx.arc(p.size+19,0,8*(p.muzzle/6),0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,220,50,${p.muzzle/6})`;
+        ctx.shadowBlur=18;ctx.shadowColor='#ffaa00';ctx.fill();ctx.shadowBlur=0;
+      }
+
+      ctx.rotate(-p.angle);
+
+      // رأس
+      ctx.beginPath();ctx.arc(0,-10,9,0,Math.PI*2);
+      ctx.fillStyle=skin.skinColor;ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;ctx.stroke();
+
+      // خوذة
+      ctx.beginPath();ctx.arc(0,-13,8,Math.PI,0);
+      ctx.fillStyle=skin.helmetColor;ctx.fill();
+      ctx.fillRect(-8,-13,16,4);
+
+      // عيون
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.ellipse(-3,-10,2.5,2,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(3,-10,2.5,2,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#222';
+      ctx.beginPath();ctx.arc(-3,-10,1.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(3,-10,1.2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(-2.3,-10.5,0.4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(3.7,-10.5,0.4,0,Math.PI*2);ctx.fill();
+
+      // فم
+      ctx.strokeStyle='#c0786a';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(0,-7,2.5,0.2,Math.PI-0.2);ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Desktop crosshair
+    if(!isMobile){
+      ctx.strokeStyle='rgba(255,255,255,0.85)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(mx-12,my);ctx.lineTo(mx+12,my);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(mx,my-12);ctx.lineTo(mx,my+12);ctx.stroke();
+      ctx.beginPath();ctx.arc(mx,my,3,0,Math.PI*2);ctx.fillStyle='#ff4444';ctx.fill();
+    }
+
+    // Mini map
+    const ms=100, mpad=15;
+    const mx2=W-ms-mpad, my2=H-ms-mpad;
+    ctx.fillStyle='rgba(0,0,0,0.75)';ctx.strokeStyle='rgba(255,100,0,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.rect(mx2,my2,ms,ms);ctx.fill();ctx.stroke();
+    const sc=ms/WORLD;
+    // zone on mini
+    ctx.beginPath();ctx.arc(mx2+this.zone.x*sc,my2+this.zone.y*sc,this.zone.r*sc,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,200,255,0.45)';ctx.lineWidth=1;ctx.stroke();
+    // enemies
+    this.enemies.forEach(e=>{
+      ctx.beginPath();ctx.arc(mx2+e.x*sc,my2+e.y*sc,3,0,Math.PI*2);ctx.fillStyle='#ff4444';ctx.fill();
+    });
+    // pickups
+    this.pickups.forEach(pk=>{
+      if(pk.taken) return;
+      ctx.beginPath();ctx.arc(mx2+pk.x*sc,my2+pk.y*sc,2,0,Math.PI*2);
+      ctx.fillStyle=pk.type==='hp'?'#44ff88':'#ffcc00';ctx.fill();
+    });
+    // player
+    ctx.beginPath();ctx.arc(mx2+p.x*sc,my2+p.y*sc,4,0,Math.PI*2);ctx.fillStyle='#4488ff';ctx.fill();
+  }
+}
+
+function loop(){
+  if(G){G.update();G.draw();}
+  else{ctx.fillStyle='#111';ctx.fillRect(0,0,canvas.width,canvas.height);}
+  requestAnimationFrame(loop);
+}
+
+function startGame(){
+  document.getElementById('menu').style.display='none';
+  document.getElementById('char-select').style.display='none';
+  document.getElementById('gameover').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('kfeed').innerHTML='';
+  document.getElementById('zone-warn').style.display='none';
+  document.getElementById('rl-msg').style.display='none';
+
+  if(isMobile){
+    document.getElementById('joy-wrap').style.display='block';
+    document.getElementById('fire-btn').style.display='flex';
+    document.getElementById('reload-btn').style.display='flex';
+    document.getElementById('chat-btn').style.display='flex';
+  }
+
+  G=new Game();
+  // طبّق إحصائيات الشخصية المختارة
+  if(selectedChar) {
+    G.p.speed = selectedChar.speed;
+    G.p.hp = selectedChar.hp;
+    G.p.maxHp = selectedChar.hp;
+    G.charSkin = selectedChar;
+  }
+  canvas.style.cursor=isMobile?'default':'none';
+}
+
+function showMenu(){
+  G=null;
+  document.getElementById('menu').style.display='flex';
+  document.getElementById('char-select').style.display='none';
+  document.getElementById('gameover').style.display='none';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('joy-wrap').style.display='none';
+  document.getElementById('fire-btn').style.display='none';
+  document.getElementById('reload-btn').style.display='none';
+  document.getElementById('chat-btn').style.display='none';
+  document.getElementById('chat-popup').style.display='none';
+  chatOpen=false;
+  document.getElementById('zone-warn').style.display='none';
+  document.getElementById('rl-msg').style.display='none';
+  canvas.style.cursor='default';
+  mobileFiring=false;
+}
+
+// ---- الشخصيات ----
+const CHARACTERS = [
+  { id:'soldier', name:'الجندي', desc:'سريع ومتوازن', bodyColor:'#2255cc', helmetColor:'#1a3a00', skinColor:'#fdbcb4', speed:3.5, hp:100 },
+  { id:'heavy',   name:'الثقيل', desc:'دفاع عالي بطيء شوية', bodyColor:'#884400', helmetColor:'#553300', skinColor:'#c8a070', speed:2.5, hp:150 },
+  { id:'sniper',  name:'القناص', desc:'سريع جداً', bodyColor:'#224422', helmetColor:'#113311', skinColor:'#fdbcb4', speed:4.5, hp:80  },
+  { id:'desert',  name:'الصحراوي', desc:'متخصص البيئة', bodyColor:'#cc9944', helmetColor:'#886622', skinColor:'#d4a870', speed:3.8, hp:100 },
+];
+
+let selectedChar = null;
+
+function drawCharPreview(canvas2d, char) {
+  const c = canvas2d.getContext('2d');
+  const w = canvas2d.width, h = canvas2d.height;
+  c.clearRect(0,0,w,h);
+  c.save();
+  c.translate(w/2, h/2+8);
+
+  // ظل
+  c.beginPath();c.ellipse(0,22,12,4,0,0,Math.PI*2);
+  c.fillStyle='rgba(0,0,0,0.3)';c.fill();
+
+  // رجلين
+  c.fillStyle=char.bodyColor;
+  c.beginPath();c.ellipse(-6,14,5,9,0,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(6,14,5,9,0,0,Math.PI*2);c.fill();
+  c.fillStyle='#111';
+  c.beginPath();c.ellipse(-6,23,6,3.5,0,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(6,23,6,3.5,0,0,Math.PI*2);c.fill();
+
+  // جسم
+  c.beginPath();c.ellipse(0,2,11,13,0,0,Math.PI*2);
+  c.fillStyle=char.bodyColor;c.fill();
+  c.strokeStyle='rgba(0,0,0,0.3)';c.lineWidth=1.5;
+  c.beginPath();c.moveTo(0,-10);c.lineTo(0,12);c.stroke();
+
+  // يد + سلاح
+  c.fillStyle=char.skinColor;
+  c.beginPath();c.ellipse(11,2,5,4,0.4,0,Math.PI*2);c.fill();
+  c.fillStyle='#333';
+  c.fillRect(11,-2,22,5);
+  c.fillStyle='#555';
+  c.fillRect(29,-3,8,7);
+
+  // رأس
+  c.beginPath();c.arc(0,-14,11,0,Math.PI*2);
+  c.fillStyle=char.skinColor;c.fill();
+  c.strokeStyle='rgba(0,0,0,0.15)';c.lineWidth=1;c.stroke();
+
+  // خوذة
+  c.beginPath();c.arc(0,-17,10,Math.PI,0);
+  c.fillStyle=char.helmetColor;c.fill();
+  c.fillRect(-10,-17,20,5);
+
+  // عيون
+  c.fillStyle='#fff';
+  c.beginPath();c.ellipse(-4,-14,3,2.5,0,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(4,-14,3,2.5,0,0,Math.PI*2);c.fill();
+  c.fillStyle='#222';
+  c.beginPath();c.arc(-4,-14,1.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(4,-14,1.5,0,Math.PI*2);c.fill();
+  c.fillStyle='#fff';
+  c.beginPath();c.arc(-3,-14.5,0.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(5,-14.5,0.5,0,Math.PI*2);c.fill();
+
+  // فم
+  c.strokeStyle='#c0786a';c.lineWidth=1.5;
+  c.beginPath();c.arc(0,-10,3,0.2,Math.PI-0.2);c.stroke();
+
+  c.restore();
+}
+
+function showCharSelect() {
+  document.getElementById('menu').style.display='none';
+  document.getElementById('char-select').style.display='flex';
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML='';
+  CHARACTERS.forEach(ch => {
+    const card = document.createElement('div');
+    card.className='char-card';
+    card.innerHTML=`<canvas width="100" height="100"></canvas><div class="cname">${ch.name}</div><div class="cdesc">${ch.desc}</div>`;
+    grid.appendChild(card); // أضف الكارت الأول
+    const cv = card.querySelector('canvas');
+    setTimeout(()=>drawCharPreview(cv, ch), 50); // ارسم بعد ما يتضاف
+    card.onclick = () => {
+      document.querySelectorAll('.char-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedChar = ch;
+      const btn = document.getElementById('start-btn');
+      btn.style.opacity='1'; btn.style.pointerEvents='auto';
+    };
+  });
+}
+
+loop();
+
+// ====== CHAT BOT ======
+const CHAT_KB = [
+  {keys:['العب','play','start','ابدأ'], r:'🎮 اضغط زرار الـ Play من القائمة الرئيسية!'},
+  {keys:['كيف','ازاي','how','control','تحكم'], r:'🕹️ جويستيك يسار = تتحرك\n🔴 يمين = تطلق نار\n🔄 = تحميل السلاح'},
+  {keys:['شخصية','character','بطل'], r:'🧍 في 4 شخصيات: الجندي، الثقيل، القناص، الصحراوي. اختارها من شاشة البداية!'},
+  {keys:['منطقة','zone','دائرة'], r:'⚠️ الدائرة الزرقا بتصغر! اتحرك دايماً جوّاها عشان متاخدش ضرر!'},
+  {keys:['cover','كفر','اختباء','جدار','صندوق'], r:'🧱 اتخبى ورا الجدران والصناديق والسيارات! الطلقات مش بتعدي منها!'},
+  {keys:['رصاص','ammo','تحميل','reload','سلاح'], r:'🔫 عندك 30 رصاصة + 90 احتياطي\nاضغط 🔄 لما الرصاص يخلص!'},
+  {keys:['حياة','hp','صحة','heart','قلب'], r:'❤️ عندك 100 HP\nلقط القلب الأخضر ♥ بيديك +30 HP'},
+  {keys:['أعداء','بوتات','50','لاعبين','كام'], r:'👥 49 بوت + إنت = 50 لاعب!\nاقتلهم كلهم عشان تفوز 🏆'},
+  {keys:['فوز','فزت','win','اكسب'], r:'🏆 اقتل الـ 49 كلهم!\nلما العداد يوصل 1/50 انت الفايز!'},
+  {keys:['مرحبا','هلا','hi','hello','hey'], r:'👋 أهلاً! اسألني عن أي حاجة في اللعبة!'},
+];
+const CHAT_QR = [
+  {label:'🕹️ طريقة اللعب', q:'كيف العب'},
+  {label:'🧍 الشخصيات', q:'الشخصيات'},
+  {label:'🧱 الـ Cover', q:'cover'},
+  {label:'🏆 كيف أفوز', q:'كيف افوز'},
+];
+let chatOpen = false, chatStarted = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const popup = document.getElementById('chat-popup');
+  popup.style.display = chatOpen ? 'flex' : 'none';
+  if(chatOpen && !chatStarted) {
+    chatStarted = true;
+    chatAddMsg('أهلاً! 🔥 أنا مساعد Desert Fire.\nاسألني عن أي حاجة في اللعبة!', 'bot');
+    buildChatQR();
+  }
+}
+
+function chatAddMsg(txt, type) {
+  const msgs = document.getElementById('chat-msgs');
+  const div = document.createElement('div');
+  div.className = `cmsg ${type}`;
+  div.innerHTML = txt.split('\n').map(l=>`<p>${l}</p>`).join('');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function chatTyping() {
+  const msgs = document.getElementById('chat-msgs');
+  const div = document.createElement('div');
+  div.className='ctyping'; div.id='ctyp';
+  div.innerHTML='<span></span><span></span><span></span>';
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function chatRemoveTyping() {
+  const t=document.getElementById('ctyp'); if(t)t.remove();
+}
+
+function buildChatQR() {
+  const area = document.getElementById('chat-qr');
+  area.innerHTML='';
+  CHAT_QR.forEach(q=>{
+    const btn=document.createElement('button');
+    btn.className='cqr'; btn.textContent=q.label;
+    btn.onclick=()=>chatProcess(q.q);
+    area.appendChild(btn);
+  });
+}
+
+function chatProcess(txt) {
+  if(!txt.trim()) return;
+  chatAddMsg(txt, 'user');
+  chatTyping();
+  setTimeout(()=>{
+    chatRemoveTyping();
+    const low=txt.toLowerCase();
+    const item=CHAT_KB.find(k=>k.keys.some(kk=>low.includes(kk)));
+    chatAddMsg(item?item.r:'🤔 مش فاهم! جرب تسأل عن: طريقة اللعب، الشخصيات، السلاح، أو المنطقة!','bot');
+  }, 600+Math.random()*400);
+}
+
+function chatSend() {
+  const inp=document.getElementById('chat-inp');
+  const txt=inp.value.trim(); inp.value='';
+  if(txt) chatProcess(txt);
+}
+</script>
+</div><!-- end game-root -->
+</body>
+</html>
